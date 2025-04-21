@@ -17,7 +17,7 @@ midDist=[ 1, 1, 1, 1, 1];
 highDist=highDist./sum(highDist);
 lowDist=lowDist./sum(lowDist);
 midDist=midDist./sum(midDist);
-allProb = [highDist; lowDist; midDist];
+allProb = [lowDist; highDist; midDist];
 flatDist=ones(nStates,1)./nStates;
 
 num_trials = 40;
@@ -60,11 +60,9 @@ for run = 1:runs
         for t = 1:num_trials
             ground_truth_states(trial_counter) = block_order(b);
             
-            reward_val   = possible_rewards(reward_index);     % e.g. 40
+            reward_index = randi(length(possible_rewards), 1);
+            reward_val   = possible_rewards(reward_index);    
             global_index = find([5 10 20 40 80] == reward_val);
-            
-            
-            trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
             
             allPState(trial_counter,:) = pState;
             
@@ -75,6 +73,7 @@ for run = 1:runs
             pState=pState./sum(pState);
 
             %updating weights and state values
+            trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             RPE = trial_reward_offer - output_act;
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
@@ -82,6 +81,7 @@ for run = 1:runs
 
             % Compute and store initiation time (higher activation = faster initiation)
             initiation_time = D / (output_act + epsilon);
+            initiation_times_raw(trial_counter) = initiation_time;
             initiation_times(block_order(b), t, run) = initiation_time;
 
             
@@ -126,6 +126,15 @@ set(gca, 'XTick', 1:3, 'XTickLabel', {'Low Reward Block', 'Mixed Reward Block', 
 xlabel('Block Type');
 ylabel('Mean Initiation Time');
 title('Mean Initiation Time per Block Type');
+grid on;
+
+%% Plotting Initiation Times Across Trials
+figure;
+hold on;
+plot(initiation_times_raw)
+xlabel('Trial')
+ylabel('Initiation Time')
+title('Initiation Times across Trials')
 grid on;
 
 %% Plotting States
