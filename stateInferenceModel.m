@@ -26,6 +26,11 @@ haz=1/40;
 all_rewards = nan(num_blocks, num_trials, runs); %record of all of the rewards that the animal received (columns are trials, rows are blocks, frames are runs)
 initiation_times = nan(num_blocks, num_trials, runs); % initiation times
 
+trial_initiation_times = nan(1,num_blocks*num_trials*runs);
+trial_rewards = nan(1,num_blocks*num_trials*runs);
+RPE_first_ten = nan(num_blocks,10, runs); %reward prediction errors for the first 10 trials of every block
+beliefs_first_ten = nan(num_blocks,11, runs); %record the beliefs for the firs 10 trials of every block and the one trial before them (bc we're gonna calc the change later)
+
 opt_out = nan; %this will change once we have the model
 
 %% Model Parameters
@@ -79,11 +84,25 @@ for run = 1:runs
             % Compute and store initiation time (higher activation = faster initiation)
             initiation_time = D / (output_act + epsilon);
             initiation_times(block_order(b), t, run) = initiation_time;
+            trial_initiation_times(trial_counter) = initiation_time;
+            trial_rewards(trial_counter) = trial_reward_offer;
 
             
-    
+            if t<11
+                RPE_first_ten(b, t, run) = RPE;
+                if run == 1 && b ==1 && t ==1
+                    beliefs_first_ten(b,t,run) = 0;
+                else
+                    [row,column] = max(allPState(trial_counter-1,:))
+                    beliefs_first_ten(b,t,run) = column;
+                    [row,column] = max(allPState(trial_counter,:));
+                    beliefs_first_ten(b,t+1,run) = column;
+                end
+            end
+
             all_rewards(block_order(b), t, run) = trial_reward_offer; %this is set up so that the row (block index) is constant despite the fact that the order of the blocks is changing (so the first row will always be low reward, second high, and third mixed)
             trial_counter = trial_counter + 1;
+
         end
     end
 end
@@ -172,3 +191,87 @@ yticklabels({'Low','High','Mixed'});
 xlabel('Trial');
 ylabel('State');
 title('Actual Block Sequence');
+
+%% Plot the trial initiation time as a function of trial from block switch (figure 2A)
+
+%get the variables
+switch_trials = find(diff(ground_truth_states)~=0)+1; 
+lowtomixed = [];
+hightomixed = [];
+for s = 1:length(switch_trials)
+    twentybefore = switch_trials(s) - 20; 
+    fourtyafter = switch_trials(s) + 40;
+    if ground_truth_states(switch_trials(s)-1) == 1 && ground_truth_states(switch_trials(s)) == 3
+        lowtomixed(end+1,:) = trial_initiation_times(twentybefore:fourtyafter);
+    elseif ground_truth_states(switch_trials(s)-1) == 2 && ground_truth_states(switch_trials(s)) == 3
+        hightomixed(end+1,:) = trial_initiation_times(twentybefore:fourtyafter);
+    end
+end
+mean_lowtomixed = mean(lowtomixed,1);
+mean_hightomixed = mean(hightomixed,1);
+
+% %plot
+% figure;
+% hold on;
+% plot(-20:40, mean_lowtomixed, 'Color', 'b', 'LineWidth', 2);
+% plot(-20:40, mean_hightomixed, 'Color', 'r', 'LineWidth', 2);
+% xlabel('Trial fromm Block Switch');
+% ylabel('Trial Initiation Time');
+% hold off;
+
+
+%plot wih "causal filter" (what they did in the paper)
+windowSize = 10;
+filteredmeanlowtomixed= nan(size(mean_lowtomixed));
+filteredmeanhighttomixed = nan(size(mean_hightomixed));
+for n = windowSize:length(mean_lowtomixed)
+    filteredmeanlowtomixed(n) = mean(mean_lowtomixed(n - windowSize + 1:n));
+    filteredmeanhightomixed(n) = mean(mean_hightomixed(n-windowSize+1:n));
+end
+figure;
+hold on;
+plot(-20:40, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2);
+plot(-20:40, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2);
+xlabel('Trial from Block Switch');
+ylabel('Trial Initiation Time');
+title('with 10 trial filter')
+hold off;
+
+
+%% Initiation times as a function of RPE sign
+
+%get the variables
+belief_change_first_ten = diff(beliefs_first_ten,1,2); %make it reflect the change in belief for the firs 10 trials 
+median_belief_change = median(belief_change_first_ten, "all");
+low_belief_change = [];
+high_belief_change = [];
+for run = 1:runs
+    for b = num_blocks
+        for t = 1:10
+            if belief_change_first_ten(b,t,run) < median_belief_change && RPE_first_ten(b,t,run) < 0
+                low_belief_change(end+1,1) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
+            elseif belief_change_first_ten(b,t,run) < median_belief_change && RPE_first_ten(b,t,run) > 0
+                low_belief_change(end+1,2) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
+            elseif belief_change_first_ten(b,t,run) > median_belief_change && RPE_first_ten(b,t,run) < 0
+                high_belief_change(end+1,1) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
+            elseif belief_change_first_ten(b,t,run) > median_belief_change && RPE_first_ten(b,t,run) > 0
+                high_belief_change(end+1,2) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
+            end
+        end
+    end
+end
+mean_lowbeliefchange = mean(low_belief_change);
+mean_highbeliefchange = mean(high_belief_change);
+
+%now plot
+figure;
+hold on;
+plot([1 2], mean_lowbeliefchange.*10, 'Color', 'b', 'LineWidth', 2, 'DisplayName', 'Low Change in Belief');
+plot([1 2], mean_highbeliefchange.*10, 'Color', 'r', 'LineWidth', 2, 'DisplayName', 'High Change in Belief');
+legend('show');
+ylabel('Change in Initiation Time (x10^-1)');
+xlim([0 3]);
+xticks([1 2]);
+xticklabels({'RPE<0', 'RPE>0'});
+hold off;
+
