@@ -28,6 +28,7 @@ initiation_times = nan(num_blocks, num_trials, runs); % initiation times
 
 trial_initiation_times = nan(1,num_blocks*num_trials*runs);
 trial_rewards = nan(1,num_blocks*num_trials*runs);
+state_order = [];
 RPE_first_ten = nan(num_blocks,10, runs); %reward prediction errors for the first 10 trials of every block
 beliefs_first_ten = nan(num_blocks,11, runs); %record the beliefs for the firs 10 trials of every block and the one trial before them (bc we're gonna calc the change later)
 
@@ -92,6 +93,9 @@ for run = 1:runs
             trial_initiation_times(trial_counter) = initiation_time;
             trial_rewards(trial_counter) = trial_reward_offer;
 
+            if t == 40
+                state_order(end+1) = block_order(b);
+            end
             
             if t<11
                 RPE_first_ten(b, t, run) = RPE;
@@ -205,48 +209,50 @@ title('Actual Block Sequence');
 %% Plot the trial initiation time as a function of trial from block switch (figure 2A)
 
 %get the variables
-switch_trials = find(diff(ground_truth_states)~=0)+1; 
+switch_trials = num_trials:num_trials:size(allPState,1);
+switch_trials = switch_trials+1;
+switch_trials = switch_trials(1:end-1);
 lowtomixed = [];
 hightomixed = [];
 for s = 1:length(switch_trials)
-    twentybefore = switch_trials(s) - 20; 
-    fourtyafter = switch_trials(s) + 40;
-    if ground_truth_states(switch_trials(s)-1) == 1 && ground_truth_states(switch_trials(s)) == 3
-        lowtomixed(end+1,:) = trial_initiation_times(twentybefore:fourtyafter);
-    elseif ground_truth_states(switch_trials(s)-1) == 2 && ground_truth_states(switch_trials(s)) == 3
-        hightomixed(end+1,:) = trial_initiation_times(twentybefore:fourtyafter);
+    thirtybefore = switch_trials(s) - 30; 
+    fourtyafter = switch_trials(s) + (40-1);
+    if state_order(s) == 1 &&  state_order(s+1)== 3
+        lowtomixed(end+1,:) = trial_initiation_times(thirtybefore:fourtyafter);
+    elseif state_order(s) == 2 &&  state_order(s+1)== 3
+        hightomixed(end+1,:) = trial_initiation_times(thirtybefore:fourtyafter);
     end
 end
 mean_lowtomixed = mean(lowtomixed,1);
 mean_hightomixed = mean(hightomixed,1);
 
-% %plot
-% figure;
-% hold on;
-% plot(-20:40, mean_lowtomixed, 'Color', 'b', 'LineWidth', 2);
-% plot(-20:40, mean_hightomixed, 'Color', 'r', 'LineWidth', 2);
-% xlabel('Trial fromm Block Switch');
-% ylabel('Trial Initiation Time');
-% hold off;
+%plot
+figure;
+hold on;
+plot(-30:39, mean_lowtomixed, 'Color', 'b', 'LineWidth', 2);
+plot(-30:39, mean_hightomixed, 'Color', 'r', 'LineWidth', 2);
+xlabel('Trial fromm Block Switch');
+ylabel('Trial Initiation Time');
+hold off;
 
 
 %plot wih "causal filter" (what they did in the paper)
 windowSize = 10;
 filteredmeanlowtomixed= nan(size(mean_lowtomixed));
-filteredmeanhighttomixed = nan(size(mean_hightomixed));
+filteredmeanhightomixed = nan(size(mean_hightomixed));
 for n = windowSize:length(mean_lowtomixed)
     filteredmeanlowtomixed(n) = mean(mean_lowtomixed(n-windowSize+1:n));
     filteredmeanhightomixed(n) = mean(mean_hightomixed(n-windowSize+1:n));
 end
 figure;
 hold on;
-plot(-20:40, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2);
-plot(-20:40, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2);
+plot(-30:39, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2);
+plot(-30:39, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2);
 xlabel('Trial from Block Switch');
+xlim([-20 40]);
 ylabel('Trial Initiation Time');
 title('with 10 trial filter')
 hold off;
-
 
 %% Initiation times as a function of RPE sign
 
