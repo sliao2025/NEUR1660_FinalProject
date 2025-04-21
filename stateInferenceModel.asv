@@ -17,7 +17,7 @@ midDist=[ 1, 1, 1, 1, 1];
 highDist=highDist./sum(highDist);
 lowDist=lowDist./sum(lowDist);
 midDist=midDist./sum(midDist);
-allProb = [lowDist; highDist; midDist];
+allProb = [highDist; lowDist; midDist];
 flatDist=ones(nStates,1)./nStates;
 
 num_trials = 40;
@@ -60,9 +60,11 @@ for run = 1:runs
         for t = 1:num_trials
             ground_truth_states(trial_counter) = block_order(b);
             
-            reward_index = randi(length(possible_rewards), 1);
-            reward_val   = possible_rewards(reward_index);    
+            reward_val   = possible_rewards(reward_index);     % e.g. 40
             global_index = find([5 10 20 40 80] == reward_val);
+            
+            
+            trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
             
             allPState(trial_counter,:) = pState;
             
@@ -73,7 +75,6 @@ for run = 1:runs
             pState=pState./sum(pState);
 
             %updating weights and state values
-            trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             RPE = trial_reward_offer - output_act;
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
