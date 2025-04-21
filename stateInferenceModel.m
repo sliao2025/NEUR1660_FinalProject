@@ -98,7 +98,7 @@ for run = 1:runs
                 if run == 1 && b ==1 && t ==1
                     beliefs_first_ten(b,t,run) = 0;
                 else
-                    [row,column] = max(allPState(trial_counter-1,:))
+                    [row,column] = max(allPState(trial_counter-1,:));
                     beliefs_first_ten(b,t,run) = column;
                     [row,column] = max(allPState(trial_counter,:));
                     beliefs_first_ten(b,t+1,run) = column;
@@ -235,7 +235,7 @@ windowSize = 10;
 filteredmeanlowtomixed= nan(size(mean_lowtomixed));
 filteredmeanhighttomixed = nan(size(mean_hightomixed));
 for n = windowSize:length(mean_lowtomixed)
-    filteredmeanlowtomixed(n) = mean(mean_lowtomixed(n - windowSize + 1:n));
+    filteredmeanlowtomixed(n) = mean(mean_lowtomixed(n-windowSize+1:n));
     filteredmeanhightomixed(n) = mean(mean_hightomixed(n-windowSize+1:n));
 end
 figure;
@@ -250,28 +250,44 @@ hold off;
 
 %% Initiation times as a function of RPE sign
 
-%get the variables
-belief_change_first_ten = diff(beliefs_first_ten,1,2); %make it reflect the change in belief for the firs 10 trials 
+
+belief_change_first_ten = diff(beliefs_first_ten,1,2); 
 median_belief_change = median(belief_change_first_ten, "all");
+
 low_belief_change = [];
 high_belief_change = [];
+
 for run = 1:runs
-    for b = num_blocks
+    for b = 1:num_blocks
         for t = 1:10
-            if belief_change_first_ten(b,t,run) < median_belief_change && RPE_first_ten(b,t,run) < 0
-                low_belief_change(end+1,1) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
-            elseif belief_change_first_ten(b,t,run) < median_belief_change && RPE_first_ten(b,t,run) > 0
-                low_belief_change(end+1,2) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
-            elseif belief_change_first_ten(b,t,run) > median_belief_change && RPE_first_ten(b,t,run) < 0
-                high_belief_change(end+1,1) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
-            elseif belief_change_first_ten(b,t,run) > median_belief_change && RPE_first_ten(b,t,run) > 0
-                high_belief_change(end+1,2) = trial_initiation_times(run*b*t) - trial_initiation_times(run*b*t-1);
+            flat_index = (run - 1) * num_blocks * num_trials + (b - 1) * num_trials + t;
+
+            if flat_index <= 1 || isnan(RPE_first_ten(b,t,run))
+                continue; % skip invalid or NaN RPE
+            end
+
+            delta_init_time = trial_initiation_times(flat_index) - trial_initiation_times(flat_index - 1);
+
+            if belief_change_first_ten(b,t,run) < median_belief_change
+                if RPE_first_ten(b,t,run) < 0
+                    low_belief_change(end+1,1) = delta_init_time;
+                elseif RPE_first_ten(b,t,run) > 0
+                    low_belief_change(end+1,2) = delta_init_time;
+                end
+            else
+                if RPE_first_ten(b,t,run) < 0
+                    high_belief_change(end+1,1) = delta_init_time;
+                elseif RPE_first_ten(b,t,run) > 0
+                    high_belief_change(end+1,2) = delta_init_time;
+                end
             end
         end
     end
 end
-mean_lowbeliefchange = mean(low_belief_change);
-mean_highbeliefchange = mean(high_belief_change);
+
+mean_lowbeliefchange = mean(low_belief_change, 1, 'omitnan');
+mean_highbeliefchange = mean(high_belief_change, 1, 'omitnan');
+
 
 %now plot
 figure;
@@ -284,5 +300,4 @@ xlim([0 3]);
 xticks([1 2]);
 xticklabels({'RPE<0', 'RPE>0'});
 hold off;
-
 
