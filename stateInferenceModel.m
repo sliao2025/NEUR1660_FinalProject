@@ -2,6 +2,7 @@ clearvars
 
 %% Task Parameters
 runs = 1000; %how many times it will go through each trial block
+runs = 5; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -37,8 +38,8 @@ opt_out = nan; %this will change once we have the model
 
 %% Model Parameters
 
-state_neurons = rand(3,1)/10; %initialize the initial state values between 0-0.1
-synaptic_lr = 0.3;
+state_neurons = rand(3,1); %initialize the initial state values between 0-0.1
+synaptic_lr = 0.1;
 state_lr = 0.1;
 D = 0.1; %Scale factor for initiation times
 
@@ -80,10 +81,11 @@ for run = 1:runs
             pState=pState./sum(pState);
 
             %updating weights and state values
-            trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
+            trial_reward_offer = possible_rewards(reward_index)/max(mixed_rewards); %the reward that could be represented on this trial
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             output_act = max(output_act,0);
             RPE = trial_reward_offer - output_act;
+            allRPES(trial_counter) = RPE;
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
             state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
 
@@ -138,11 +140,9 @@ legend(labels);
 title('Average Initiation Time Across Trials Per Block');
 grid on;
 
-%% Calculate the Mean Initiation Time Per Block Type
-% For each block, average initiation time across all trials and runs
+%% Plot the Mean Initiation Times Per Block as Dots with Custom Colors
 mean_initiation_time = squeeze(mean(mean(initiation_times, 2), 3));
 
-%% Plot the Mean Initiation Times Per Block as Dots with Custom Colors
 figure;
 hold on;
 plot(1, mean_initiation_time(1), 'o', 'Color', 'b', 'MarkerFaceColor', 'b', 'MarkerSize', 10);
@@ -330,6 +330,7 @@ else
     disp('Not all trials where RPE < 0 have a belief change of 0.');
 end
 
+
 % Step 4: Calculate the median of the belief changes
 median_belief_change = median(belief_change_first_ten,"all");
 
@@ -349,3 +350,24 @@ if sum(low_belief_mask, "all") ~= 0
 else
     disp('There are no trials where RPE < 0 and belief change is low.');
 end
+
+%% Plotting RPE Distribution
+%% 1) Histogram of *all* RPEs across every trial
+figure;
+histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
+xlabel('Reward Prediction Error (RPE)');
+ylabel('Probability Density');
+title('Distribution of RPE Across All Trials');
+grid on;
+
+%% 2) Histogram of RPEs just for the *first ten* trials of each block
+figure;
+histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
+xlabel('RPE (first 10 trials of each block)');
+ylabel('Count');
+title('RPE Distribution in the First Ten Trials');
+grid on;
+
+
+
+
