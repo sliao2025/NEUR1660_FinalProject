@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 10; %how many times it will go through each trial block
+runs = 5; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -290,17 +290,17 @@ for run = 1:runs
                     high_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
                 elseif RPE_first_ten(b,t,run) > 0
                     if run*b*t ~= 1
-                    high_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
+                    high_belief_change(end+1,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
                     end
                 end
             end
-            cout = count + 1;
+            cout = 1;
         end
     end
 end
 
-mean_lowbeliefchange = mean(low_belief_change, 1, 'omitnan');
-mean_highbeliefchange = mean(high_belief_change, 1, 'omitnan');
+mean_lowbeliefchange = nanmean(low_belief_change, 1, 'omitnan');
+mean_highbeliefchange = nanmean(high_belief_change, 1, 'omitnan');
 
 
 %now plot
