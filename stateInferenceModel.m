@@ -285,7 +285,7 @@ for run = 1:runs
                 elseif RPE_first_ten(b,t,run) > 0
                     low_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
                 end
-            else
+            elseif belief_change_first_ten(b,t,run) > median_belief_change
                 if RPE_first_ten(b,t,run) < 0
                     high_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
                 elseif RPE_first_ten(b,t,run) > 0
@@ -313,4 +313,20 @@ xlim([0 3]);
 xticks([1 2]);
 xticklabels({'RPE<0', 'RPE>0'});
 hold off;
+
+%% checking why the above doesnt work
+
+rpe_negative_mask = RPE_first_ten < 0;
+
+% Step 2: Extract the corresponding belief changes for these trials
+belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
+
+% Step 3: Check if all belief change values are 0
+all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
+
+if all_belief_zero_for_rpe_negative
+    disp('All trials where RPE < 0 have a belief change of 0.');
+else
+    disp('Not all trials where RPE < 0 have a belief change of 0.');
+end
 
