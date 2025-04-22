@@ -276,25 +276,24 @@ count = 1;
 for run = 1:runs
     for b = 1:num_blocks
         for t = 1:10
-            trial = run*num_blocks*num_trials - (num_blocks-b)*num_trials - num_trials + t;
+            % trial = run*num_blocks*num_trials - (num_blocks-b)*num_trials - num_trials + t;
+            trial = (run - 1)*num_blocks*num_trials + (b - 1)*num_trials + t;
+            if trial>1
             if belief_change_first_ten(b,t,run) < median_belief_change
                 if RPE_first_ten(b,t,run) < 0
                     low_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1); 
                 elseif RPE_first_ten(b,t,run) > 0
-                    if run*b*t~=1
                     low_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
-                    end
                 end
             else
                 if RPE_first_ten(b,t,run) < 0
                     high_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
                 elseif RPE_first_ten(b,t,run) > 0
-                    if run*b*t ~= 1
                     high_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
-                    end
                 end
             end
-            cout = count + 1;
+            end
+            count = count + 1;
         end
     end
 end
