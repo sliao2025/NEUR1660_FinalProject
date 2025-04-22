@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 10; %how many times it will go through each trial block
+runs = 1000; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -319,7 +319,7 @@ hold off;
 rpe_negative_mask = RPE_first_ten < 0;
 
 % Step 2: Extract the corresponding belief changes for these trials
-belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
+belief_change_for_rpe_negative = belief_change_first_ten.*rpe_negative_mask;
 
 % Step 3: Check if all belief change values are 0
 all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
@@ -330,3 +330,22 @@ else
     disp('Not all trials where RPE < 0 have a belief change of 0.');
 end
 
+% Step 4: Calculate the median of the belief changes
+median_belief_change = median(belief_change_first_ten,"all");
+
+% Step 5: Check if there are any trials where RPE < 0 and belief change is high or low
+high_belief_mask = belief_change_for_rpe_negative > median_belief_change;
+low_belief_mask = belief_change_for_rpe_negative < median_belief_change;
+
+% Step 6: Display results
+if sum(high_belief_mask,"all") ~= 0
+    disp('There are trials where RPE < 0 and belief change is high.');
+else
+    disp('There are no trials where RPE < 0 and belief change is high.');
+end
+
+if sum(low_belief_mask, "all") ~= 0 
+    disp('There are trials where RPE < 0 and belief change is low.');
+else
+    disp('There are no trials where RPE < 0 and belief change is low.');
+end
