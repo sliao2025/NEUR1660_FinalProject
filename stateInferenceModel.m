@@ -30,7 +30,7 @@ trial_initiation_times = nan(1,num_blocks*num_trials*runs);
 trial_rewards = nan(1,num_blocks*num_trials*runs);
 state_order = [];
 RPE_first_ten = nan(num_blocks,10, runs); %reward prediction errors for the first 10 trials of every block
-beliefs_first_ten = nan(num_blocks,11, runs); %record the beliefs for the firs 10 trials of every block and the one trial before them (bc we're gonna calc the change later)
+beliefs_first_ten = nan(num_blocks,11, runs,nStates); %record the beliefs for the firs 10 trials of every block and the one trial before them (bc we're gonna calc the change later)
 beliefs_first_ten(1,1,1) = 3;
 
 opt_out = nan; %this will change once we have the model
@@ -38,7 +38,7 @@ opt_out = nan; %this will change once we have the model
 %% Model Parameters
 
 state_neurons = rand(3,1); %initialize the initial state values between 0-0.1
-synaptic_lr = 0.1;
+synaptic_lr = 0.3;
 state_lr = 0.1;
 D = 0.1; %Scale factor for initiation times
 
@@ -85,6 +85,7 @@ for run = 1:runs
             output_act = max(output_act,0);
             RPE = trial_reward_offer - output_act;
             allRPES(trial_counter) = RPE;
+            
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
             state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
 
@@ -102,15 +103,15 @@ for run = 1:runs
             if t < 11 | t == 40
                 if t<11
                     RPE_first_ten(b, t, run) = RPE;
-                    [row,column] = max(allPState(trial_counter,:));
-                    beliefs_first_ten(b,t+1,run) = column;
+                    belief = allPState(trial_counter,:);
+                    beliefs_first_ten(b,t+1,run,:) = belief;
                 elseif t == 40 && ~(run ==runs && b == num_blocks)
                     if b == 3
-                        [row,column] = max(allPState(trial_counter,:));
-                        beliefs_first_ten(1,1,run+1) = column;
+                        belief = allPState(trial_counter,:);
+                        beliefs_first_ten(1,1,run+1,:) = belief;
                     elseif b ~= 3
-                        [row,column] = max(allPState(trial_counter,:));
-                        beliefs_first_ten(b+1,1,run) = column;
+                        belief = allPState(trial_counter,:);
+                        beliefs_first_ten(b+1,1,run,:) = belief;
                     end
                 end
             end
@@ -260,13 +261,14 @@ hold off;
 
 %% Initiation times as a function of RPE sign
 
-beliefs_first_ten_fixed = beliefs_first_ten;
-beliefs_first_ten_fixed(beliefs_first_ten_fixed== 3) = 0;
-beliefs_first_ten_fixed(beliefs_first_ten_fixed== 2) = 3;
-beliefs_first_ten_fixed(beliefs_first_ten_fixed== 0) = 2;
-belief_change_first_ten = diff(beliefs_first_ten_fixed,1,2); 
-belief_change_first_ten = (-1).*belief_change_first_ten;
-median_belief_change = median(belief_change_first_ten, "all");
+dBelief = diff(beliefs_first_ten,1,2);      % → 3 × 9 × 5 × 3
+dBelief = (-1)*(dBelief);
+% 2) Euclidean norm of each 3‑vector  (operate along the 4th dim!)
+delta = vecnorm(dBelief,2,4);              % → 3 × 9 × 5
+
+belief_change_first_ten = nan(3,11,runs);     % pre‑fill
+belief_change_first_ten(:,2:end,:) = delta;
+median_belief_change = median(belief_change_first_ten, "all", "omitnan");
 
 low_belief_change = nan(10*num_blocks*runs,2);
 high_belief_change = nan(10*num_blocks*runs,2);
@@ -278,19 +280,19 @@ for run = 1:runs
             % trial = run*num_blocks*num_trials - (num_blocks-b)*num_trials - num_trials + t;
             trial = (run - 1)*num_blocks*num_trials + (b - 1)*num_trials + t;
             if trial>1
-            if belief_change_first_ten(b,t,run) < median_belief_change
-                if RPE_first_ten(b,t,run) < 0
-                    low_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1); 
-                elseif RPE_first_ten(b,t,run) > 0
-                    low_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
+                if belief_change_first_ten(b,t,run) < median_belief_change
+                    if RPE_first_ten(b,t,run) < 0
+                        low_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1); 
+                    elseif RPE_first_ten(b,t,run) > 0
+                        low_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
+                    end
+                elseif belief_change_first_ten(b,t,run) > median_belief_change
+                    if RPE_first_ten(b,t,run) < 0
+                        high_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
+                    elseif RPE_first_ten(b,t,run) > 0
+                        high_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
+                    end
                 end
-            elseif belief_change_first_ten(b,t,run) > median_belief_change
-                if RPE_first_ten(b,t,run) < 0
-                    high_belief_change(count,1) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
-                elseif RPE_first_ten(b,t,run) > 0
-                    high_belief_change(count,2) = trial_initiation_times(trial) - trial_initiation_times(trial - 1);
-                end
-            end
             end
             count = count + 1;
         end
