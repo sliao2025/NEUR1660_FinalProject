@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 5; %how many times it will go through each trial block
+runs = 10; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -40,7 +40,7 @@ opt_out = nan; %this will change once we have the model
 state_neurons = rand(3,1); %initialize the initial state values between 0-0.1
 synaptic_lr = 0.3;
 state_lr = 0.1;
-D = 0.1; %Scale factor for initiation times
+D = 0.08; %Scale factor for initiation times
 
 %% Runs
 weight_matrix = rand(3,1);
@@ -85,7 +85,7 @@ for run = 1:runs
             output_act = max(output_act,0);
             RPE = trial_reward_offer - output_act;
             allRPES(trial_counter) = RPE;
-            
+
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
             state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
 
@@ -251,8 +251,9 @@ for n = windowSize:length(mean_lowtomixed)
 end
 figure;
 hold on;
-plot(-30:39, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2);
-plot(-30:39, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2);
+plot(-30:39, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2, 'displayName', 'Low');
+plot(-30:39, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2, 'displayName', 'High');
+legend('show');
 xlabel('Trial from Block Switch');
 xlim([-20 40]);
 ylabel('Trial Initiation Time');
