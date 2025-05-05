@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 10; %how many times it will go through each trial block
+runs = 100; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -231,6 +231,14 @@ end
 mean_lowtomixed = mean(lowtomixed,1);
 mean_hightomixed = mean(hightomixed,1);
 
+%getting the zscore version info
+meanofmean_lowtomixed = mean(mean_lowtomixed);
+meanofmean_hightomixed = mean(mean_hightomixed);
+std_lowtomixed = std(mean_lowtomixed);
+std_hightoixed = std(mean_hightomixed);
+z_lowtomixed = (mean_lowtomixed - meanofmean_lowtomixed)./std_lowtomixed;
+z_hightomixed = (mean_hightomixed - meanofmean_hightomixed)./std_hightoixed;
+
 %plot
 figure;
 hold on;
@@ -238,6 +246,16 @@ plot(-30:39, mean_lowtomixed, 'Color', 'b', 'LineWidth', 2);
 plot(-30:39, mean_hightomixed, 'Color', 'r', 'LineWidth', 2);
 xlabel('Trial fromm Block Switch');
 ylabel('Trial Initiation Time');
+hold off;
+
+%plot (z-score version)
+figure;
+hold on;
+plot(-30:39, z_lowtomixed, 'Color', 'b', 'LineWidth', 2, 'DisplayName','Low');
+plot(-30:39, z_hightomixed, 'Color', 'r', 'LineWidth', 2, 'DisplayName','High');
+xlabel('Trial fromm Block Switch');
+ylabel('Trial Initiation Time (z-score)');
+legend('show');
 hold off;
 
 
@@ -258,6 +276,25 @@ xlabel('Trial from Block Switch');
 xlim([-20 40]);
 ylabel('Trial Initiation Time');
 title('with 10 trial filter')
+hold off;
+
+%plot wih "causal filter" (z-score version)
+windowSize = 10;
+zfilteredmeanlowtomixed= nan(size(z_lowtomixed));
+zfilteredmeanhightomixed = nan(size(z_hightomixed));
+for n = windowSize:length(z_lowtomixed)
+    zfilteredmeanlowtomixed(n) = mean(z_lowtomixed(n-windowSize+1:n));
+    zfilteredmeanhightomixed(n) = mean(z_hightomixed(n-windowSize+1:n));
+end
+figure;
+hold on;
+plot(-30:39, zfilteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2, 'DisplayName','Low');
+plot(-30:39, zfilteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2, 'DisplayName','High');
+xlabel('Trial from Block Switch');
+xlim([-20 40]);
+ylabel('Trial Initiation Time (z-score)');
+title('with 10 trial filter')
+legend('show');
 hold off;
 
 %% Initiation times as a function of RPE sign
@@ -317,38 +354,38 @@ xticklabels({'RPE<0', 'RPE>0'});
 hold off;
 
 %% checking why the above doesnt work
-
-rpe_negative_mask = RPE_first_ten < 0;
-
-% Step 2: Extract the corresponding belief changes for these trials
-belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
-
-% Step 3: Check if all belief change values are 0
-all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
-
-if all_belief_zero_for_rpe_negative
-    disp('All trials where RPE < 0 have a belief change of 0.');
-else
-    disp('Not all trials where RPE < 0 have a belief change of 0.');
-end
-
-%% Plotting RPE Distribution
-%% 1) Histogram of *all* RPEs across every trial
-figure;
-histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
-xlabel('Reward Prediction Error (RPE)');
-ylabel('Probability Density');
-title('Distribution of RPE Across All Trials');
-grid on;
-
-%% 2) Histogram of RPEs just for the *first ten* trials of each block
-figure;
-histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
-xlabel('RPE (first 10 trials of each block)');
-ylabel('Count');
-title('RPE Distribution in the First Ten Trials');
-grid on;
-
-
-
-
+% 
+% rpe_negative_mask = RPE_first_ten < 0;
+% 
+% % Step 2: Extract the corresponding belief changes for these trials
+% belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
+% 
+% % Step 3: Check if all belief change values are 0
+% all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
+% 
+% if all_belief_zero_for_rpe_negative
+%     disp('All trials where RPE < 0 have a belief change of 0.');
+% else
+%     disp('Not all trials where RPE < 0 have a belief change of 0.');
+% end
+% 
+% %% Plotting RPE Distribution
+% %% 1) Histogram of *all* RPEs across every trial
+% figure;
+% histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
+% xlabel('Reward Prediction Error (RPE)');
+% ylabel('Probability Density');
+% title('Distribution of RPE Across All Trials');
+% grid on;
+% 
+% %% 2) Histogram of RPEs just for the *first ten* trials of each block
+% figure;
+% histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
+% xlabel('RPE (first 10 trials of each block)');
+% ylabel('Count');
+% title('RPE Distribution in the First Ten Trials');
+% grid on;
+% 
+% 
+% 
+% 

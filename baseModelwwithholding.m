@@ -20,7 +20,11 @@ RPE_first_ten = nan(num_blocks,10, runs); %reward prediction errors for the firs
 beliefs_first_ten = zeros(num_blocks,11, runs, num_blocks); %record the beliefs for the firs 10 trials of every block and the one trial before them (bc we're gonna calc the change later)
 beliefs_first_ten(1,1,1) = 1;
 
-opt_out = nan; %this will change once we have the model
+% opt_out = nan; %this will change once we have the model
+withholdrate = 15/100; %mah et al said they withheld on 15-25% of trials
+allwithholds = [];
+
+output_acts = [];
 
 %% Model Parameters
 
@@ -57,13 +61,31 @@ for run = 1:runs
         end
 
         for t = 1:num_trials
+                %decide if it's a withholding trial or not
+                withhold = rand;
+                if withhold <= withholdrate
+                    withhold = 1;
+                else
+                    withhold = 0;
+                end
+                allwithholds(trial_counter) = withhold;
+
             reward_index = randi(length(possible_rewards), 1);
             trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
-            
+            if withhold == 1
+                real_trial_reward = 0;
+            elseif withhold == 0;
+                real_trial_reward = trial_reward_offer;
+            else
+                disp('ERROR');
+            end
+        
+
             %updating weights and state values
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             output_act = max(output_act,0);
-            RPE = trial_reward_offer - output_act;
+            output_acts(trial_counter) = output_act;
+            RPE = real_trial_reward - output_act;
             allRPES(trial_counter) = RPE;
 
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * state_one_hot); %existing weights + weight update
@@ -74,7 +96,7 @@ for run = 1:runs
             initiation_times_raw(trial_counter) = initiation_time;
             initiation_times(block_order(b), t, run) = initiation_time;
             trial_initiation_times(trial_counter) = initiation_time;
-            trial_rewards(trial_counter) = trial_reward_offer;
+            trial_rewards(trial_counter) = real_trial_reward;
 
             if t == 40
                 state_order(end+1) = block_order(b);
@@ -97,7 +119,7 @@ for run = 1:runs
             end
 
 
-            reward_withheld = randsample(2, 1, true, [85 15]); %decide if this will be a trial where the reward will be withheld (15% of the time) (2 means it is a withholding trial)
+            % reward_withheld = randsample(2, 1, true, [85 15]); %decide if this will be a trial where the reward will be withheld (15% of the time) (2 means it is a withholding trial)
             % if reward_withheld == 2 %if this is a withholding trial, no reward is received
             %     trial_reward = 0;
             % end
@@ -107,7 +129,7 @@ for run = 1:runs
             % if opt_out == 0
             %     trial_reward = trial_reward_offer;
             % end
-            all_rewards(block_order(b), t, run) = trial_reward_offer; %this is set up so that the row (block index) is constant despite the fact that the order of the blocks is changing (so the first row will always be low reward, second high, and third mixed)
+            all_rewards(block_order(b), t, run) = real_trial_reward; %this is set up so that the row (block index) is constant despite the fact that the order of the blocks is changing (so the first row will always be low reward, second high, and third mixed)
             trial_counter = trial_counter+1;
         end
     end
@@ -355,3 +377,10 @@ hold off;
 % ylabel('Count');
 % title('RPE Distribution in the First Ten Trials');
 % grid on;
+
+
+%% figuring out if the withhholding trials actually have negative rpes
+
+max(allRPES(find(allwithholds ==1)))
+
+mean(allRPES(find(allwithholds ==1)))
