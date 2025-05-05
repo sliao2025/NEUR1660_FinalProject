@@ -37,7 +37,7 @@ opt_out = nan; %this will change once we have the model
 
 %% Model Parameters
 
-state_neurons = rand(3,1); %initialize the initial state values between 0-0.1
+state_neurons = rand(3,1)/10; %initialize the initial state values between 0-0.1
 synaptic_lr = 0.3;
 state_lr = 0.1;
 D = 0.08; %Scale factor for initiation times
@@ -81,14 +81,14 @@ for run = 1:runs
 
             %updating weights and state values
             trial_reward_offer = possible_rewards(reward_index)/max(mixed_rewards); %the reward that could be represented on this trial
+            
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             output_act = max(output_act,0);
             RPE = trial_reward_offer - output_act;
-            allRPES(trial_counter) = RPE;
-
             weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
             state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
-
+            
+            allRPES(trial_counter) = RPE;
             % Compute and store initiation time (higher activation = faster initiation)
             initiation_time = D / (output_act + epsilon);
             initiation_times_raw(trial_counter) = initiation_time;
