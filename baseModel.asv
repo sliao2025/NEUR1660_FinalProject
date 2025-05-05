@@ -169,69 +169,40 @@ end
 mean_lowtomixed = mean(lowtomixed,1);
 mean_hightomixed = mean(hightomixed,1);
 
-%getting the zscore version info
+%getting the zscore version
 meanofmean_lowtomixed = mean(mean_lowtomixed);
 meanofmean_hightomixed = mean(mean_hightomixed);
 std_lowtomixed = std(mean_lowtomixed);
 std_hightoixed = std(mean_hightomixed);
-z_lowtomixed = (mean_lowtomixed - meanofmean_lowtomixed)./std_lowtomixed;
-z_hightomixed = (mean_hightomixed - meanofmean_hightomixed)./std_hightoixed;
+z_lowtomixed = mean
+z_hightomixed = 
 
-% %plot (non z-score version)
-% figure;
-% hold on;
-% plot(-30:39, mean_lowtomixed, 'Color', 'b', 'LineWidth', 2);
-% plot(-30:39, mean_hightomixed, 'Color', 'r', 'LineWidth', 2);
-% xlabel('Trial fromm Block Switch');
-% ylabel('Trial Initiation Time');
-% hold off;
-
-%plot (z-score version)
+%plot
 figure;
 hold on;
-plot(-30:39, z_lowtomixed, 'Color', 'b', 'LineWidth', 2, 'DisplayName','Low');
-plot(-30:39, z_hightomixed, 'Color', 'r', 'LineWidth', 2, 'DisplayName','High');
+plot(-30:39, mean_lowtomixed, 'Color', 'b', 'LineWidth', 2);
+plot(-30:39, mean_hightomixed, 'Color', 'r', 'LineWidth', 2);
 xlabel('Trial fromm Block Switch');
-ylabel('Trial Initiation Time (z-score)');
-legend('show');
+ylabel('Trial Initiation Time');
 hold off;
 
 
-% %plot wih "causal filter" 
-% windowSize = 10;
-% filteredmeanlowtomixed= nan(size(mean_lowtomixed));
-% filteredmeanhightomixed = nan(size(mean_hightomixed));
-% for n = windowSize:length(mean_lowtomixed)
-%     filteredmeanlowtomixed(n) = mean(mean_lowtomixed(n-windowSize+1:n));
-%     filteredmeanhightomixed(n) = mean(mean_hightomixed(n-windowSize+1:n));
-% end
-% figure;
-% hold on;
-% plot(-30:39, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2);
-% plot(-30:39, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2);
-% xlabel('Trial from Block Switch');
-% xlim([-20 40]);
-% ylabel('Trial Initiation Time');
-% title('with 10 trial filter')
-% hold off;
-
-%plot wih "causal filter" (z-score version)
+%plot wih "causal filter" (what they did in the paper)
 windowSize = 10;
-zfilteredmeanlowtomixed= nan(size(z_lowtomixed));
-zfilteredmeanhightomixed = nan(size(z_hightomixed));
-for n = windowSize:length(z_lowtomixed)
-    zfilteredmeanlowtomixed(n) = mean(z_lowtomixed(n-windowSize+1:n));
-    zfilteredmeanhightomixed(n) = mean(z_hightomixed(n-windowSize+1:n));
+filteredmeanlowtomixed= nan(size(mean_lowtomixed));
+filteredmeanhightomixed = nan(size(mean_hightomixed));
+for n = windowSize:length(mean_lowtomixed)
+    filteredmeanlowtomixed(n) = mean(mean_lowtomixed(n-windowSize+1:n));
+    filteredmeanhightomixed(n) = mean(mean_hightomixed(n-windowSize+1:n));
 end
 figure;
 hold on;
-plot(-30:39, zfilteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2, 'DisplayName','Low');
-plot(-30:39, zfilteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2, 'DisplayName','High');
+plot(-30:39, filteredmeanlowtomixed, 'Color', 'b', 'LineWidth', 2);
+plot(-30:39, filteredmeanhightomixed, 'Color', 'r', 'LineWidth', 2);
 xlabel('Trial from Block Switch');
 xlim([-20 40]);
-ylabel('Trial Initiation Time (z-score)');
+ylabel('Trial Initiation Time');
 title('with 10 trial filter')
-legend('show');
 hold off;
 
 %% Initiation times as a function of RPE sign (this kinda just isnt a thing for the base model since the belief difference is binary?)
