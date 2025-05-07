@@ -1,4 +1,4 @@
-clearvars 
+clearvars
 
 %% Task Parameters
 runs = 100; %how many times it will go through each trial block
@@ -23,6 +23,7 @@ flatDist=ones(nStates,1)./nStates;
 num_trials = 40;
 haz=1/40;
 withholdrate = 15/100; %mah et al said they withheld on 15-25% of trials
+allwithholds = [];
 
 all_rewards = nan(num_blocks, num_trials, runs); %record of all of the rewards that the animal received (columns are trials, rows are blocks, frames are runs)
 initiation_times = nan(num_blocks, num_trials, runs); % initiation times
@@ -34,14 +35,15 @@ RPE_first_ten = nan(num_blocks,10, runs); %reward prediction errors for the firs
 beliefs_first_ten = nan(num_blocks,11, runs,nStates); %record the beliefs for the firs 10 trials of every block and the one trial before them (bc we're gonna calc the change later)
 beliefs_first_ten(1,1,1) = 3;
 
-opt_out = nan; %this will change once we have the model
+output_acts = [];
+% opt_out = nan; %this will change once we have the model
 
 %% Model Parameters
 
 state_neurons = rand(3,1); %initialize the initial state values between 0-0.1
-synaptic_lr = 0.3;
-state_lr = 0.1;
-D = 0.08; %Scale factor for initiation times
+synaptic_lr = 0.15;
+state_lr = 0.05;
+D = 0.8; %Scale factor for initiation times
 
 %% Runs
 weight_matrix = rand(3,1);
@@ -68,11 +70,12 @@ for run = 1:runs
         for t = 1:num_trials
             %decide if it's a withholding trial or not
             withhold = rand;
-            if withold <= withholdrate
+            if withhold <= withholdrate
                 withhold = 1;
             else
                 withhold = 0;
             end
+            allwithholds(trial_counter) = withhold;
 
             ground_truth_states(trial_counter) = block_order(b);
             reward_index = randi(length(possible_rewards), 1);
@@ -88,27 +91,30 @@ for run = 1:runs
 
             %updating weights and state values
             trial_reward_offer = possible_rewards(reward_index)/max(mixed_rewards); %the reward that could be represented on this trial
-            if withhold = 1
+            if withhold == 1
                 real_trial_reward = 0;
-            elseif withhold = 0;
+            elseif withhold == 0;
                 real_trial_reward = trial_reward_offer;
             else
                 disp('ERROR');
             end
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             output_act = max(output_act,0);
-            RPE = trial_reward_offer - output_act;
+            output_acts(trial_counter) = output_act;
+            RPE = real_trial_reward - output_act;
             allRPES(trial_counter) = RPE;
-
-            weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
-            state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
+            
+            % update = synaptic_lr * RPE .* (state_neurons.*pState - RPE.*weight_matrix);
+            update = synaptic_lr * RPE .* state_neurons .* pState;
+            weight_matrix = weight_matrix + update; %existing weights + weight update
+            state_neurons = state_neurons*(1-state_lr) + state_lr*RPE; %existing state + state update
 
             % Compute and store initiation time (higher activation = faster initiation)
             initiation_time = D / (output_act + epsilon);
             initiation_times_raw(trial_counter) = initiation_time;
             initiation_times(block_order(b), t, run) = initiation_time;
             trial_initiation_times(trial_counter) = initiation_time;
-            trial_rewards(trial_counter) = trial_reward_offer;
+            trial_rewards(trial_counter) = real_trial_reward;
 
             if t == 40
                 state_order(end+1) = block_order(b);
@@ -130,7 +136,7 @@ for run = 1:runs
                 end
             end
 
-            all_rewards(block_order(b), t, run) = trial_reward_offer; %this is set up so that the row (block index) is constant despite the fact that the order of the blocks is changing (so the first row will always be low reward, second high, and third mixed)
+            all_rewards(block_order(b), t, run) = real_trial_reward; %this is set up so that the row (block index) is constant despite the fact that the order of the blocks is changing (so the first row will always be low reward, second high, and third mixed)
             trial_counter = trial_counter + 1;
 
         end
@@ -188,6 +194,16 @@ for s = 1:3
              'LineWidth', 2);
     end
 end
+
+
+withholdTrials = find(allwithholds==1);
+markerY = 1;   % just above the “Mixed” state (which sits at y=3)
+scatter( withholdTrials, ...
+         markerY*ones(size(withholdTrials)), ...
+         25,        ... % marker size
+         'r',       ... % color
+         'filled',  ...
+         'DisplayName','Withhold' );
 
 % --- Tidy up axes ---
 xlim([1 numTrialsTotal]);
@@ -314,7 +330,6 @@ hold off;
 %% Initiation times as a function of RPE sign
 
 dBelief = diff(beliefs_first_ten,1,2);      % → 3 × 9 × 5 × 3
-dBelief = (-1)*(dBelief);
 % 2) Euclidean norm of each 3‑vector  (operate along the 4th dim!)
 delta = vecnorm(dBelief,2,4);              % → 3 × 9 × 5
 
@@ -368,38 +383,43 @@ xticklabels({'RPE<0', 'RPE>0'});
 hold off;
 
 %% checking why the above doesnt work
-% 
-% rpe_negative_mask = RPE_first_ten < 0;
-% 
-% % Step 2: Extract the corresponding belief changes for these trials
-% belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
-% 
-% % Step 3: Check if all belief change values are 0
-% all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
-% 
-% if all_belief_zero_for_rpe_negative
-%     disp('All trials where RPE < 0 have a belief change of 0.');
-% else
-%     disp('Not all trials where RPE < 0 have a belief change of 0.');
-% end
-% 
-% %% Plotting RPE Distribution
-% %% 1) Histogram of *all* RPEs across every trial
-% figure;
-% histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
-% xlabel('Reward Prediction Error (RPE)');
-% ylabel('Probability Density');
-% title('Distribution of RPE Across All Trials');
-% grid on;
-% 
-% %% 2) Histogram of RPEs just for the *first ten* trials of each block
-% figure;
-% histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
-% xlabel('RPE (first 10 trials of each block)');
-% ylabel('Count');
-% title('RPE Distribution in the First Ten Trials');
-% grid on;
-% 
-% 
-% 
-% 
+
+rpe_negative_mask = RPE_first_ten < 0;
+
+% Step 2: Extract the corresponding belief changes for these trials
+belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
+
+% Step 3: Check if all belief change values are 0
+all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
+
+if all_belief_zero_for_rpe_negative
+    disp('All trials where RPE < 0 have a belief change of 0.');
+else
+    disp('Not all trials where RPE < 0 have a belief change of 0.');
+end
+
+%% Plotting RPE Distribution
+%% 1) Histogram of *all* RPEs across every trial
+figure;
+histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
+xlabel('Reward Prediction Error (RPE)');
+ylabel('Probability Density');
+title('Distribution of RPE Across All Trials');
+grid on;
+
+%% 2) Histogram of RPEs just for the *first ten* trials of each block
+figure;
+histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
+xlabel('RPE (first 10 trials of each block)');
+ylabel('Count');
+title('RPE Distribution in the First Ten Trials');
+grid on;
+
+%% figuring out if the withhholding trials actually have negative rpes
+
+max(allRPES(find(allwithholds ==1)))
+
+mean(allRPES(find(allwithholds ==1)))
+
+mean(allRPES(find(allwithholds == 0)))
+

@@ -1,7 +1,7 @@
-clearvars 
+clearvars
 
 %% Task Parameters
-runs = 100; %how many times it will go through each trial block
+runs = 25; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -41,9 +41,9 @@ output_acts = [];
 %% Model Parameters
 
 state_neurons = rand(3,1); %initialize the initial state values between 0-0.1
-synaptic_lr = 0.3;
-state_lr = 0.1;
-D = 0.08; %Scale factor for initiation times
+synaptic_lr = 0.15;
+state_lr = 0.05;
+D = 0.8; %Scale factor for initiation times
 
 %% Runs
 weight_matrix = rand(3,1);
@@ -103,9 +103,11 @@ for run = 1:runs
             output_acts(trial_counter) = output_act;
             RPE = real_trial_reward - output_act;
             allRPES(trial_counter) = RPE;
-
-            weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
-            state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
+            
+            % update = synaptic_lr * RPE .* (state_neurons.*pState - RPE.*weight_matrix);
+            update = synaptic_lr * RPE .* state_neurons .* pState;
+            weight_matrix = weight_matrix + update; %existing weights + weight update
+            state_neurons = state_neurons*(1-state_lr) + state_lr*RPE; %existing state + state update
 
             % Compute and store initiation time (higher activation = faster initiation)
             initiation_time = D / (output_act + epsilon);
@@ -192,6 +194,16 @@ for s = 1:3
              'LineWidth', 2);
     end
 end
+
+
+withholdTrials = find(allwithholds==1);
+markerY = 1;   % just above the “Mixed” state (which sits at y=3)
+scatter( withholdTrials, ...
+         markerY*ones(size(withholdTrials)), ...
+         25,        ... % marker size
+         'r',       ... % color
+         'filled',  ...
+         'DisplayName','Withhold' );
 
 % --- Tidy up axes ---
 xlim([1 numTrialsTotal]);
@@ -318,7 +330,6 @@ hold off;
 %% Initiation times as a function of RPE sign
 
 dBelief = diff(beliefs_first_ten,1,2);      % → 3 × 9 × 5 × 3
-dBelief = (-1)*(dBelief);
 % 2) Euclidean norm of each 3‑vector  (operate along the 4th dim!)
 delta = vecnorm(dBelief,2,4);              % → 3 × 9 × 5
 
@@ -409,4 +420,6 @@ grid on;
 max(allRPES(find(allwithholds ==1)))
 
 mean(allRPES(find(allwithholds ==1)))
+
+mean(allRPES(find(allwithholds == 0)))
 
