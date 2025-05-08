@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 100; %how many times it will go through each trial block
+runs = 10; %how many times it will go through each trial block
 
 num_blocks = 3;
 low_rewards = [5 10 20]; %possible rewards in the low reward block
@@ -12,7 +12,7 @@ num_trials = 40;
 
 all_rewards = nan(num_blocks, num_trials, runs); %record of all of the rewards that the animal received (columns are trials, rows are blocks, frames are runs)
 initiation_times = nan(num_blocks, num_trials, runs); % initiation times
-
+withholdrate = 15/100;
 trial_initiation_times = nan(1,num_blocks*num_trials*runs);
 trial_rewards = nan(1,num_blocks*num_trials*runs);
 state_order = [];
@@ -27,7 +27,7 @@ opt_out = nan; %this will change once we have the model
 state_neurons = rand(3,1)/10; %initialize the initial state values between 0-0.1
 synaptic_lr = 0.3;
 state_lr = 0.15;
-D = 0.1; %Scale factor for initiation times
+D = 0.025; %Scale factor for initiation times
 
 %% Runs
 weight_matrix = rand(3,1);
@@ -57,16 +57,31 @@ for run = 1:runs
         end
 
         for t = 1:num_trials
+            withhold = rand;
+            if withhold <= withholdrate
+                withhold = 1;
+            else
+                withhold = 0;
+            end
             reward_index = randi(length(possible_rewards), 1);
             trial_reward_offer = possible_rewards(reward_index)/80; %the reward that could be represented on this trial
-            
+            if withhold == 1
+                real_trial_reward = 0;
+            elseif withhold == 0;
+                real_trial_reward = trial_reward_offer;
+            else
+                disp('ERROR');
+            end
             %updating weights and state values
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             output_act = max(output_act,0);
-            RPE = trial_reward_offer - output_act;
+            RPE = real_trial_reward - output_act;
             allRPES(trial_counter) = RPE;
 
-            weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * state_one_hot); %existing weights + weight update
+            
+            
+
+            weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * state_one_hot .* state_neurons); %existing weights + weight update
             state_neurons(state_idx) = state_neurons(state_idx)*(1-state_lr) + state_lr*RPE; %existing state + state update
 
             % Compute and store initiation time (higher activation = faster initiation)
@@ -74,7 +89,7 @@ for run = 1:runs
             initiation_times_raw(trial_counter) = initiation_time;
             initiation_times(block_order(b), t, run) = initiation_time;
             trial_initiation_times(trial_counter) = initiation_time;
-            trial_rewards(trial_counter) = trial_reward_offer;
+            trial_rewards(trial_counter) = real_trial_reward;
 
             if t == 40
                 state_order(end+1) = block_order(b);
