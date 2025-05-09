@@ -1,4 +1,4 @@
-    clearvars
+clearvars
 
 %% Task Parameters
 runs = 25; %how many times it will go through each trial block
