@@ -1,8 +1,8 @@
-    clearvars
+clearvars
 
 %% Task Parameters
 
-runs = 100; %how many times it will go through each trial block
+runs = 25; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
