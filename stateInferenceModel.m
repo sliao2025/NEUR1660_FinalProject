@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 100; %how many times it will go through each trial block
+runs = 10; %how many times it will go through each trial block
 
 num_blocks = 3;
 nStates = num_blocks;
@@ -85,7 +85,7 @@ for run = 1:runs
             output_act = (weight_matrix)'*state_neurons; %should be 1x1
             output_act = max(output_act,0);
             RPE = trial_reward_offer - output_act;
-            weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE * pState); %existing weights + weight update
+            weight_matrix = weight_matrix.*(1-synaptic_lr) + (synaptic_lr * RPE *pState); %existing weights + weight update
             state_neurons = state_neurons.*pState*(1-state_lr) + state_lr*RPE; %existing state + state update
             
             allRPES(trial_counter) = RPE;
@@ -300,7 +300,6 @@ hold off;
 %% Initiation times as a function of RPE sign
 
 dBelief = diff(beliefs_first_ten,1,2);      % → 3 × 9 × 5 × 3
-dBelief = (-1)*(dBelief);
 % 2) Euclidean norm of each 3‑vector  (operate along the 4th dim!)
 delta = vecnorm(dBelief,2,4);              % → 3 × 9 × 5
 
@@ -354,38 +353,38 @@ xticklabels({'RPE<0', 'RPE>0'});
 hold off;
 
 %% checking why the above doesnt work
-% 
-% rpe_negative_mask = RPE_first_ten < 0;
-% 
-% % Step 2: Extract the corresponding belief changes for these trials
-% belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
-% 
-% % Step 3: Check if all belief change values are 0
-% all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
-% 
-% if all_belief_zero_for_rpe_negative
-%     disp('All trials where RPE < 0 have a belief change of 0.');
-% else
-%     disp('Not all trials where RPE < 0 have a belief change of 0.');
-% end
-% 
-% %% Plotting RPE Distribution
-% %% 1) Histogram of *all* RPEs across every trial
-% figure;
-% histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
-% xlabel('Reward Prediction Error (RPE)');
-% ylabel('Probability Density');
-% title('Distribution of RPE Across All Trials');
-% grid on;
-% 
-% %% 2) Histogram of RPEs just for the *first ten* trials of each block
-% figure;
-% histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
-% xlabel('RPE (first 10 trials of each block)');
-% ylabel('Count');
-% title('RPE Distribution in the First Ten Trials');
-% grid on;
-% 
-% 
-% 
-% 
+
+rpe_negative_mask = RPE_first_ten < 0;
+
+% Step 2: Extract the corresponding belief changes for these trials
+belief_change_for_rpe_negative = belief_change_first_ten(rpe_negative_mask);
+
+% Step 3: Check if all belief change values are 0
+all_belief_zero_for_rpe_negative = all(belief_change_for_rpe_negative == 0);
+
+if all_belief_zero_for_rpe_negative
+    disp('All trials where RPE < 0 have a belief change of 0.');
+else
+    disp('Not all trials where RPE < 0 have a belief change of 0.');
+end
+
+%% Plotting RPE Distribution
+%% 1) Histogram of *all* RPEs across every trial
+figure;
+histogram(allRPES, 30, 'Normalization','pdf');    % 30 bins, normalized to probability density
+xlabel('Reward Prediction Error (RPE)');
+ylabel('Probability Density');
+title('Distribution of RPE Across All Trials');
+grid on;
+
+%% 2) Histogram of RPEs just for the *first ten* trials of each block
+figure;
+histogram(RPE_first_ten(:), 20);                  % 20 bins, raw counts
+xlabel('RPE (first 10 trials of each block)');
+ylabel('Count');
+title('RPE Distribution in the First Ten Trials');
+grid on;
+
+
+
+
