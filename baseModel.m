@@ -1,7 +1,7 @@
 clearvars 
 
 %% Task Parameters
-runs = 10; %how many times it will go through each trial block
+runs = 100; %how many times it will go through each trial block
 
 num_blocks = 3;
 low_rewards = [5 10 20]; %possible rewards in the low reward block
